@@ -42,6 +42,26 @@ var lowercase = 'abcdefghijklmnopqrstuvwxyz',
 		{ name: 'symbols', rule: /[!@#$%^&*()+_\-=}{[\]|:;"/?.><,`~]/ }
 	];
 
+// Validate the configuration is possible
+var validConfiguration = function(options, pool) {
+	if (!options.strict) return true;
+
+	return fitsRules(options, pool);
+};
+
+// Determine if string matches each rule
+var fitsRules = function(options, string) {
+	// Iterate over each rule, checking to see if the password works.
+	return strictRules.every(function(rule) {
+		// If the option is not checked, ignore it.
+		if (!options[rule.name]) return true;
+
+		// Run the regex on the password and return whether
+		// or not it matches.
+		return rule.rule.test(string);
+	});
+}
+
 var generate = function(options, pool) {
 	var password = '',
 		optionsLength = options.length,
@@ -52,25 +72,8 @@ var generate = function(options, pool) {
 	}
 
 	if (options.strict) {
-		// Iterate over each rule, checking to see if the password works.
-		var fitsRules = strictRules.every(function(rule) {
-			// If the option is not checked, ignore it.
-			if (options[rule.name] == false) return true;
-
-			// Treat symbol differently if explicit string is provided
-			if (rule.name === 'symbols' && typeof options[rule.name] === 'string') {
-				// Create a regular expression from the provided symbols
-				var re = new RegExp('['+options[rule.name]+']');
-				return re.test(password);
-			}
-
-			// Run the regex on the password and return whether
-			// or not it matches.
-			return rule.rule.test(password);
-		});
-
 		// If it doesn't fit the rules, generate a new one (recursion).
-		if (!fitsRules) return generate(options, pool);
+		if (!fitsRules(options, password)) return generate(options, pool);
 	}
 
 	return password;
@@ -135,6 +138,10 @@ self.generate = function(options) {
 	var i = options.exclude.length;
 	while (i--) {
 		pool = pool.replace(options.exclude[i], '');
+	}
+
+	if (!validConfiguration(options, pool)) {
+		throw new TypeError('Configuration not possible');
 	}
 
 	var password = generate(options, pool);
